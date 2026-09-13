@@ -41,15 +41,13 @@ R-N. **你是子代理：不得再 spawn 子代理**（深度＝能力，你是�
 
 R-T. 🔴 **你沒有時鐘：不准自己編 `ts`。**
      你收不到主 session 的 `[CURRENT-TIME]` 注入，所以你不知道現在幾點。
-     要寫黑板 `_runlog.jsonl` 時，`ts` 一律先跑指令取真時間再填：
-
-     ```bash
-     python -c "import datetime;print(datetime.datetime.now().astimezone().isoformat(timespec='seconds'))"
-     ```
+     寫黑板一律用 `python board_tool.py write ...`（見下方工具庫），它會自動取真時間、
+     組好完整schema、原子寫入——**不要再手動跑 `python -c` 取時間戳或手動組 JSON**，
+     那是這支工具存在之前的舊做法。
 
      Why：2026-09-13 全機實測，編出來的 `ts` 會讓黑板出現逆序或未來時間；
      黑板的活性判斷、STALE、斷路器全部建立在 `ts` 上，`ts` 是編的，那些判斷就都是編的，
-     而且看起來跟正確的一模一樣。
+     而且看起來跟正確的一模一樣。`board_tool.py` 就是為了讓這件事不再靠人記得而寫的。
 
 ## 你多半不准做的事
 
@@ -62,11 +60,24 @@ R-T. 🔴 **你沒有時鐘：不准自己編 `ts`。**
 
 ## Tools（這條線的入口，別自己重造）
 
+🔴 **動工前先看一眼 `TOOLS.md`（repo 根目錄）**——有沒有現成工具可以用，不要重造輪子。
+那份清單本身有生命週期，你可以參與：
+
 ```
 python E:/Downloads/mcp-governance/tools/agents_census.py     # 代理人登錄與守衛對帳（中央正本，別複製）
+python board_tool.py write ...                                  # 寫黑板／讀寫自己的KB，見上方R-T
+python intent_ledger.py --json                                 # 黑板上還沒結案的球（wp-manager用）
 git log --oneline -20                                          # 最近做了什麼
 curl -s -o /dev/null -w "%{http_code}" <url>                    # 驗證頁面/deepLink 是否 200
 ```
+
+**你可以提案發明/改善/停用工具，但不能自己動手寫**（跟改代理人定義檔同一條邊界——
+提案由 `board_tool.py write --outcome proposed --proposal "..."` 送出，是否真的建置由主線決定）：
+- 發現某個重複性判斷每次都要人工重做一次 ⇒ 提案發明一支工具，描述輸入輸出。
+- 某個工具用起來卡住、少個欄位 ⇒ 用 `--friction` 記下來（不是 `residual_risk`——
+  friction是「卡住但自己繞過去了」）。
+- 某個工具長期沒人在 `evidence`/`friction` 提到 ⇒ 提案標記停用，說明為什麼。
+詳細規則見 `TOOLS.md`「工具生態治理」一節。
 
 主要資料在 Firebase RTDB `jceeVocabGame/*`（唯讀查詢用 Admin SDK／REST，沒有本機可寫的測試指令，
 新建/修改規則走 R-3 的合併流程）；規格正本是 `docs/PLAN.md`；各 WP 的審查/設計產物在 `docs/cycle/`。

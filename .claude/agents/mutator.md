@@ -81,31 +81,18 @@ maxTurns: 25
 
 ## 寫黑板（跑完之後，不是呼叫誰）
 
-完成任務後，**先追加自己的知識庫** `.claude/agents/kb/mutator.md`（照 `kb/README.md` 的規則）：
-這次的提案屬於哪一類、如果知道上一次提案的下場（被採納/被否決/沒人理），記下來，
-這是你判斷「什麼樣的突變值得認真提」的唯一依據。
+完成任務後，用 `board_tool.py`：
 
-再在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；全機標準 schema，見
-`E:\Downloads\mcp-governance\docs\AGENT_BLACKBOARD.md`）：
+1. **先追加自己的知識庫**（這次提案屬於哪一類、如果知道上一次提案的下場記下來）：
+   ```bash
+   python board_tool.py kb-append mutator --text "<這次提案的類型、上次提案的下場（若已知）>"
+   ```
+2. **再寫黑板一列**（`outcome` 固定 `proposed`，`--needs-human` 固定加上）：
+   ```bash
+   python board_tool.py write --agent mutator --task "<挑戰了哪個定案，一句話>" \
+     --outcome proposed --needs-human \
+     --summary "<一句話>" --evidence "docs/cycle/mutation-<主題>.md" \
+     --residual "<這個提案還沒被誰評估過可行性>" --proposal "<提案摘要>"
+   ```
 
-🔴 `ts` 先跑指令取真時間，不要憑上下文推算：
-
-```bash
-python -c "import datetime;print(datetime.datetime.now().astimezone().isoformat(timespec='seconds'))"
-```
-
-```json
-{"ts": "<跑上面那行取得的真時間>", "line": "JCEE-vocab-questions", "agent": "mutator",
- "task": "<挑戰了哪個定案，一句話>",
- "outcome": "proposed",
- "summary": "<一句話，不含學生姓名/email/UID/任何機密>",
- "evidence": ["docs/cycle/mutation-<主題>.md"],
- "residual_risk": ["<這個提案還沒被誰評估過可行性>"],
- "needs_human": true,
- "proposal": "<提案摘要，完整版在evidence指的檔案裡>",
- "closes": [], "friction": []}
-```
-
-- `needs_human` 固定寫 `true`——你的每一次輸出定義上都需要人（或`cycle-designer`）裁決，
-  沒有「outcome=ok，不用管」這種結果。
-- `evidence` 與 `summary` 🔴 值永不入板：無 env 值、無 token、無學生個資，只放指標。
+`--summary`／`--evidence` 🔴 值永不入板：無 env 值、無 token、無學生個資，只放指標。

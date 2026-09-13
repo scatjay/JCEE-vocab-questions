@@ -53,33 +53,26 @@ maxTurns: 20
 
 ## 寫黑板（跑完之後，不是呼叫誰）
 
-完成任務後，**先追加自己的知識庫** `.claude/agents/kb/ux-designer.md`（照 `kb/README.md`
-的規則：標日期、區分「有定論的研究」／「本專案的實測」／「我的判斷」，被推翻的往下移不刪除）——
-手機端窄螢幕/觸控目標/首次使用體驗這些判準在本專案的實際校準、哪個舊判斷被推翻了。
+完成任務後，用 `board_tool.py`（同目錄下的工具，會自動取真時間、組好完整schema、原子寫入，
+不要再手動跑 `python -c` 取時間戳或手動組 JSON）：
 
-再在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；這是留言板，
-不是呼叫誰——`wp-manager` 會讀它了解你跑得如何；全機標準 schema，見
-`E:\Downloads\mcp-governance\docs\AGENT_BLACKBOARD.md`）：
+1. **有新學到的東西才追加自己的知識庫**（不是每次都要）：
+   ```bash
+   python board_tool.py kb-append ux-designer --text "<這次學到的具體內容，照kb/README.md的規則區分研究/實測/判斷>"
+   ```
+2. **一定要寫黑板一列**：
+   ```bash
+   python board_tool.py write --agent ux-designer --task "<這次做什麼，一句話>" \
+     --outcome ok|blocked|failed|incomplete|proposed \
+     --summary "<一句話，不含學生姓名/email/UID/任何機密>" \
+     --evidence "<檔案路徑或可重跑指令，逗號分隔>" \
+     --residual "<沒測到、留給人複核的，逗號分隔>"
+   ```
+   需要時再加：`--needs-human`（球在人手上）、`--proposal "<提案內容>"`（outcome=proposed時必填）、
+   `--closes "<ts1,ts2>"`（本輪確認查證過已處理完的舊列時間戳）、`--friction "<...>"`（本輪撞到但自己解決的阻礙）。
 
-🔴 `ts` 先跑指令取真時間，不要憑上下文推算——你收不到主 session 的 `[CURRENT-TIME]` 注入，
-你不知道現在幾點：
-
-```bash
-python -c "import datetime;print(datetime.datetime.now().astimezone().isoformat(timespec='seconds'))"
-```
-
-```json
-{"ts": "<跑上面那行取得的真時間>", "line": "JCEE-vocab-questions", "agent": "ux-designer",
- "task": "<這次做什麼，一句話>",
- "outcome": "ok | blocked | failed | proposed",
- "summary": "<一句話，不含學生姓名/email/UID/任何機密>",
- "evidence": ["<檔案路徑或可重跑指令，不放內容>"],
- "residual_risk": ["<沒測到、留給人複核的>"],
- "needs_human": false,
- "proposal": null,
- "closes": [], "friction": []}
-```
-
-- `outcome=proposed`＋`proposal` 給提案用（建議修改規格/新增代理人/加紅線等）——**提案只能由人變成動作**。
-- `evidence` 與 `summary` 🔴 **值永不入板**：無 env 值、無 token、無學生個資，只放指標。
-- 寫不進去（檔案鎖、路徑不存在）要在回報文字裡講，不要靜默跳過。
+- `outcome=proposed` 必須帶 `--proposal`——**提案只能由人變成動作**。
+- `outcome=incomplete`：**接了任務但沒做完**（撞到輪數/token上限、範圍中途發現太大）——
+  跟 `failed`（做完了但結果錯／不通過）不同。標這個而不是勉強交一份不完整的當作 `ok`。
+- `--summary`／`--evidence` 🔴 值永不入板：無 env 值、無 token、無學生個資，只放指標。
+- 指令失敗（例如路徑不存在）要在回報文字裡講，不要靜默跳過。
