@@ -1,0 +1,39 @@
+{
+  "_comment": [
+    "子代理人守衛：複製自 mcp-governance/templates/agent-team-starter/settings.json（2026-09-14 接線）。",
+    "腳本在全域 ~/.claude/hooks/，本檔只負責把它們掛上——因為掛鉤設定是 per-project，不會自動繼承。",
+    "🔴 這三支是邊界本身，不是裝飾：工具清單擋不住有 Bash 的代理人（官方文件明說 Bash 規則不是 security boundary）。",
+    "驗收：python E:/Downloads/mcp-governance/tools/agents_census.py 看本線那行有沒有從 🔴 變 ✅。"
+  ],
+  "hooks": {
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python C:/Users/user/.claude/hooks/log-subagent-spawn.py"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python C:/Users/user/.claude/hooks/guard-subagent-budget.py"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python C:/Users/user/.claude/hooks/guard-subagent-writes.py"
+          }
+        ]
+      }
+    ]
+  }
+}

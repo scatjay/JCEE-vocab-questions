@@ -54,7 +54,7 @@ maxTurns: 20
 - 不把「這個系統不可能服務所有人」當成攻擊——那是事實。
   你要攻的是**假裝有服務到、或用失敗傷害對方**。
 
-## 產出格式
+## 回報格式
 
 ```
 ## 常設挑戰逐條
@@ -70,3 +70,32 @@ maxTurns: 20
 
 跑完把「本次新增的攻擊」與確認有效的失效條件，追加到
 `.claude/agents/kb/red-team-critic.md`，讓下一次攻擊站在這次的肩膀上。
+
+## 寫黑板（跑完之後，不是呼叫誰）
+
+完成任務後，在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；這是留言板，
+不是呼叫誰——`wp-manager` 會讀它了解你跑得如何；全機標準 schema，見
+`E:\Downloads\mcp-governance\docs\AGENT_BLACKBOARD.md`）：
+
+🔴 `ts` 先跑指令取真時間，不要憑上下文推算——你收不到主 session 的 `[CURRENT-TIME]` 注入，
+你不知道現在幾點：
+
+```bash
+python -c "import datetime;print(datetime.datetime.now().astimezone().isoformat(timespec='seconds'))"
+```
+
+```json
+{"ts": "<跑上面那行取得的真時間>", "line": "JCEE-vocab-questions", "agent": "red-team-critic",
+ "task": "<這次做什麼，一句話>",
+ "outcome": "ok | blocked | failed | proposed",
+ "summary": "<一句話，不含學生姓名/email/UID/任何機密>",
+ "evidence": ["<檔案路徑或可重跑指令，不放內容>"],
+ "residual_risk": ["<沒測到、留給人複核的>"],
+ "needs_human": false,
+ "proposal": null,
+ "closes": [], "friction": []}
+```
+
+- `outcome=proposed`＋`proposal` 給提案用（建議修改規格/新增代理人/加紅線等）——**提案只能由人變成動作**。
+- `evidence` 與 `summary` 🔴 **值永不入板**：無 env 值、無 token、無學生個資，只放指標。
+- 寫不進去（檔案鎖、路徑不存在）要在回報文字裡講，不要靜默跳過。
