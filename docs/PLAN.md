@@ -219,7 +219,12 @@ reports/{uid}/{periodId}: {         // WP-6，periodId 例："2026-W38"
 
 ## 5. 工作包
 
-### ⬜ WP-1 遊戲化核心引擎 ＋ 資料層
+### 🟨 WP-1 遊戲化核心引擎 ＋ 資料層 — 2026-09-14 Phase1-3已實作，驗收部分待真人/cycle-evaluator
+
+> `cycle-builder` 已依 `docs/cycle/wp1-2-design.md` 完成施工（`game/engine.js`／`game/engine.css`／
+> `game/kc-logic.js`／`wordwheel.html` adapter）。13條驗收標準裡 5/6/7/11(a)(b)(c) 已用 node
+> 單元測試驗過；1-4/9/10/13 需要真實 RTDB 帳號＋瀏覽器端到端測試，本輪環境無法驗，
+> 已標記 `needs_human`，留給真人或 `cycle-evaluator` 補驗。
 **前置**：無（可立即開工）
 **目標**：一份共用引擎，加上 RTDB progress/sessions/wrongItems 的結構與規則，並在**一個**站（`wordwheel.html`）跑通端到端。
 
