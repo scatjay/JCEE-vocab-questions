@@ -60,8 +60,11 @@ R-T. 🔴 **你沒有時鐘：不准自己編 `ts`。**
 
 ## Tools（這條線的入口，別自己重造）
 
-🔴 **動工前先看一眼 `TOOLS.md`（repo 根目錄）**——有沒有現成工具可以用，不要重造輪子。
-那份清單本身有生命週期，你可以參與：
+🔴 **動工前先看自己的工具箱 `.claude/agents/toolbox/<你自己的name>.md`**——
+這是從全隊共用的 `TOOLS.md` 裡篩出跟你有關的子集，加上你自己用出來的心得，
+不用每次都去讀 `TOOLS.md` 全文。工具箱跟 `kb/<name>.md` 是平行結構：kb記判斷力，
+toolbox記工具用法，兩個都只增不改。`TOOLS.md` 本身是治理權威，工具箱是個人筆記，
+兩者對不上時以 `TOOLS.md` 為準。那份清單本身有生命週期，你可以參與：
 
 ```
 python E:/Downloads/mcp-governance/tools/agents_census.py     # 代理人登錄與守衛對帳（中央正本，別複製）
