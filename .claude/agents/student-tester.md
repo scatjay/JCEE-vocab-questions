@@ -80,7 +80,11 @@ maxTurns: 25
 
 ## 寫黑板（跑完之後，不是呼叫誰）
 
-完成任務後，在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；這是留言板，
+完成任務後，**先追加自己的知識庫** `.claude/agents/kb/student-tester.md`（照 `kb/README.md`
+的規則）——這次模擬情境（A-E其一）撞到的牆，並標「尚未驗證」；之後若有真人測試結果回饋，
+更新對應那條為「已證實」或「已推翻」。
+
+再在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；這是留言板，
 不是呼叫誰——`wp-manager` 會讀它了解你跑得如何；全機標準 schema，見
 `E:\Downloads\mcp-governance\docs\AGENT_BLACKBOARD.md`）：
 

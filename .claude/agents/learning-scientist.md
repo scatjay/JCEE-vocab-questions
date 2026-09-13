@@ -49,7 +49,11 @@ maxTurns: 20
 
 ## 寫黑板（跑完之後，不是呼叫誰）
 
-完成任務後，在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；這是留言板，
+完成任務後，**先追加自己的知識庫** `.claude/agents/kb/learning-scientist.md`（照 `kb/README.md`
+的規則：標日期、區分「有定論的研究」／「本專案的實測」／「我的判斷」，被推翻的往下移不刪除）——
+檢索/間隔/交錯/期望難度這些判準在本專案的實際校準、哪個舊判斷被這次審查推翻了。
+
+再在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；這是留言板，
 不是呼叫誰——`wp-manager` 會讀它了解你跑得如何；全機標準 schema，見
 `E:\Downloads\mcp-governance\docs\AGENT_BLACKBOARD.md`）：
 

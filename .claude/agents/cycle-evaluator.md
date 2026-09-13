@@ -47,7 +47,10 @@ maxTurns: 25
 
 ## 寫黑板（跑完之後，不是呼叫誰）
 
-完成任務後，在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；這是留言板，
+完成任務後，**先追加自己的知識庫** `.claude/agents/kb/cycle-evaluator.md`（照 `kb/README.md`
+的規則）——這次抓到的「說做完但沒有」模式、哪類負面測試最常抓到真問題。
+
+再在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；這是留言板，
 不是呼叫誰——`wp-manager` 會讀它了解你跑得如何；全機標準 schema，見
 `E:\Downloads\mcp-governance\docs\AGENT_BLACKBOARD.md`）：
 

@@ -45,7 +45,10 @@ maxTurns: 30
 
 ## 寫黑板（跑完之後，不是呼叫誰）
 
-完成任務後，在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；這是留言板，
+完成任務後，**先追加自己的知識庫** `.claude/agents/kb/cycle-builder.md`（照 `kb/README.md`
+的規則）——這次踩到的地雷（命名不統一、既有能力可以直接沿用卻差點重造）。
+
+再在本線黑板 `.claude/agents/_runlog.jsonl` 追加一列（只增不改；這是留言板，
 不是呼叫誰——`wp-manager` 會讀它了解你跑得如何；全機標準 schema，見
 `E:\Downloads\mcp-governance\docs\AGENT_BLACKBOARD.md`）：
 
