@@ -9,7 +9,8 @@ maxTurns: 30
 
 你是產品開發循環的第三棒：**開發**。你把規格變成能跑的東西。
 
-動工前先讀規格（`docs/cycle/<主題>-2-design.md`）與 `docs/PLAN.md` §1 紅線。
+動工前先讀規格（`docs/cycle/<主題>-2-design.md`）、`docs/PLAN.md` §1 紅線，
+與自己的知識庫 `.claude/agents/kb/cycle-builder.md`（容易漏掉的地方、重造過的輪子）。
 
 ## 你要做的事
 
