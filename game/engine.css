@@ -1,0 +1,68 @@
+/* game/engine.css — WP-1 遊戲化 HUD 樣式。
+   刻意自成一格：深色底 + 琥珀色，不跟隨各站既有配色（各站色系不一，配不完；
+   HUD 本來就該讀起來像疊在內容上的一層）。見 docs/PLAN.md §5 WP-1 做法第2點。 */
+
+#jg-hud {
+  position: fixed;
+  top: .6rem;
+  right: .6rem;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  background: #1b1712;
+  color: #f3d9a4;
+  border: 1px solid #4a3a1f;
+  border-radius: 999px;
+  padding: .35rem .85rem;
+  font: 600 .82rem/1.4 system-ui, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+  pointer-events: none;
+  user-select: none;
+}
+
+#jg-hud .jg-lv { color: #ffb547; }
+#jg-hud .jg-xp { color: #f3d9a4; }
+#jg-hud .jg-streak { color: #ff9d42; }
+
+#jg-hud .jg-toast {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: .4rem;
+  background: #1b1712;
+  color: #f3d9a4;
+  border: 1px solid #4a3a1f;
+  border-radius: .4rem;
+  padding: .3rem .65rem;
+  font: 700 .8rem/1.3 system-ui, sans-serif;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+  animation: jg-toast-fade 1.2s ease forwards;
+  white-space: nowrap;
+}
+
+#jg-hud .jg-toast.ok {
+  color: #ffd27a;
+  border-color: #6b4a1c;
+}
+
+@keyframes jg-toast-fade {
+  0%   { opacity: 0; transform: translateY(-4px); }
+  15%  { opacity: 1; transform: translateY(0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (max-width: 26rem) {
+  #jg-hud {
+    top: .4rem;
+    right: .4rem;
+    padding: .3rem .6rem;
+    font-size: .76rem;
+    gap: .4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #jg-hud .jg-toast { animation: none; opacity: 1; }
+}
