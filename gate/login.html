@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登入 · 高中英文題庫（測試版）</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{
+    --paper:#F6F1E4; --paper-card:#FFFDF7; --ink:#221F1A; --ink-soft:#5B5648;
+    --rule:#DCD3BB; --crimson:#AE3626; --sage:#3E6E52;
+    --shadow: 0 1px 0 rgba(34,31,26,.06), 0 8px 24px rgba(34,31,26,.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .card{
+    max-width:420px; width:100%; background:var(--paper-card); border:1px solid var(--rule);
+    border-radius:8px; padding:32px 28px; box-shadow:var(--shadow); text-align:center;
+  }
+  h1{font-size:20px; margin:0 0 8px;}
+  p{font-size:14px; line-height:1.7; color:var(--ink-soft); margin:0 0 20px;}
+  .btn{
+    display:inline-flex; align-items:center; gap:10px; justify-content:center;
+    width:100%; padding:12px 16px; border-radius:6px; border:1px solid var(--rule);
+    background:#fff; font-size:15px; font-weight:700; color:var(--ink); cursor:pointer;
+  }
+  .btn:hover{background:#f4f4f4;}
+  .btn svg{width:18px; height:18px;}
+  .status{margin-top:20px; font-size:13.5px; line-height:1.8; display:none;}
+  .status.show{display:block;}
+  .status.pending{color:var(--crimson);}
+  .status.approved{color:var(--sage);}
+  .who{font-size:12.5px; color:var(--ink-soft); margin-top:14px;}
+  .logout{background:none; border:none; color:var(--crimson); text-decoration:underline; cursor:pointer; font-size:12.5px; padding:0;}
+  a.enter{display:inline-block; margin-top:14px; background:var(--sage); color:#fff; text-decoration:none;
+    padding:10px 22px; border-radius:6px; font-weight:700; font-size:14px;}
+  footer{margin-top:22px; font-size:11.5px; color:var(--ink-soft); line-height:1.7;}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>高中英文題庫 · 測試版</h1>
+  <p id="lede">內容改編自 <a href="https://staresto-create.github.io/JCEE-vocab-questions/" target="_blank" rel="noopener">staresto-create ZZSH 老師的自學題庫</a>，這裡是遊戲化實驗版，僅供受邀測試，需要用 Google 帳號登入、並經過楊老師本人審核才能進入。</p>
+
+  <button class="btn" id="loginBtn">
+    <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34 5.1 29.3 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.1 18.9 12 24 12c3.1 0 5.8 1.1 8 3l6-6C34 5.1 29.3 3 24 3 16.3 3 9.7 7.4 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.4-4.5 2.2-7.2 2.2-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 40.5 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.2 4.3-4.1 5.7l6.2 5.2C40.8 36 44 30.6 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
+    使用 Google 帳號登入
+  </button>
+
+  <div class="status" id="statusPending">
+    <p>已收到登入紀錄，等待楊老師審核中。審核通過這頁會自動更新，不用一直重新整理。</p>
+    <div class="who" id="whoPending"></div>
+    <button class="logout" id="logoutBtnPending">登出</button>
+  </div>
+
+  <div class="status approved" id="statusApproved">
+    <p>已通過審核，歡迎！</p>
+    <a class="enter" href="../play/">進入練習系統 →</a>
+    <div class="who" id="whoApproved"></div>
+    <button class="logout" id="logoutBtnApproved">登出</button>
+  </div>
+
+  <footer>
+    測試版僅供評估，尚未對外開放。原題庫著作權屬 staresto-create ZZSH 所有，非商業使用。
+  </footer>
+</div>
+
+<script type="module">
+  import { loginWithGoogle, logout, watchAuth, ensureUserRecord, watchUserRecord } from "./gate-config.js";
+
+  const loginBtn = document.getElementById("loginBtn");
+  const statusPending = document.getElementById("statusPending");
+  const statusApproved = document.getElementById("statusApproved");
+  const lede = document.getElementById("lede");
+
+  loginBtn.addEventListener("click", async () => {
+    loginBtn.disabled = true;
+    loginBtn.textContent = "登入中…";
+    try {
+      await loginWithGoogle();
+    } catch (e) {
+      alert("登入失敗：" + (e && e.message ? e.message : e));
+      loginBtn.disabled = false;
+      loginBtn.textContent = "使用 Google 帳號登入";
+    }
+  });
+
+  document.getElementById("logoutBtnPending").addEventListener("click", () => logout());
+  document.getElementById("logoutBtnApproved").addEventListener("click", () => logout());
+
+  let unwatchRecord = null;
+
+  watchAuth(async (user) => {
+    if (unwatchRecord) { unwatchRecord(); unwatchRecord = null; }
+    if (!user) {
+      loginBtn.classList.remove("hidden");
+      lede.classList.remove("hidden");
+      statusPending.classList.remove("show");
+      statusApproved.classList.remove("show");
+      loginBtn.disabled = false;
+      loginBtn.textContent = "使用 Google 帳號登入";
+      return;
+    }
+    loginBtn.classList.add("hidden");
+    lede.classList.add("hidden");
+    await ensureUserRecord(user);
+    unwatchRecord = watchUserRecord(user.uid, (rec) => {
+      const approved = !!(rec && rec.approved);
+      statusPending.classList.toggle("show", !approved);
+      statusApproved.classList.toggle("show", approved);
+      const who = `登入身分：${user.displayName || ""}（${user.email}）`;
+      document.getElementById("whoPending").textContent = who;
+      document.getElementById("whoApproved").textContent = who;
+    });
+  });
+</script>
+</body>
+</html>
