@@ -527,7 +527,13 @@ wrongItems/{uid}/{itemKey}: {
 
 ---
 
-### ⬜ WP-9 底線偵測與誠實路由（M 型化）
+### ⬜ WP-9 底線偵測與誠實路由（M 型化） — 2026-09-14 red-team-critic主審＋cycle-designer收斂完成
+
+> 見 `docs/cycle/wp9-2-design.md`。`red-team-critic` 主審找到1致命+3嚴重問題，其中2項已被
+> WP-1施工意外解決（`recentAttempts`／`forceStreakCredit`已建置）；roots深連結缺口升級為
+> build的硬性阻斷前置條件（已給補丁介面契約）；安全網「指向外部資源」文案定案候選A先進build，
+> **候選B/C（要不要加碼校外心理支持資源）需要楊老師決定，見§7**。Phase 1-3可交cycle-builder
+> 施工，Phase 4（文案真身審查）待楊老師回答後才能關閉。
 **前置**：WP-8
 **目標**：系統發現自己幫不上這個學生時，**誠實說出來並指路，而不是繼續餵他失敗**。
 
@@ -617,10 +623,11 @@ wrongItems/{uid}/{itemKey}: {
 | 5 | **`play/` 要不要串進原站首頁導覽？** | 任何對外開放前 | 目前刻意沒串（測試期間靠直接網址進入） |
 | 6 | **真人測試找得到學生嗎？** | 🔴 **WP-9** | WP-9 的對象是低閱讀能力的學生。若找不到真人測，這個 WP 只能標為「未經驗證」上線，不能宣稱有效 |
 | 7 | **難度公式要不要換成 logistic/Rasch 模型？**（θ 個人小樣本統計不穩、跟全國大樣本 d 直接線性相加不對稱） | WP-8 政策5 | 本輪意見來自模擬版 `assessment-expert`，需要真身重新審查才能定案；換模型會牽動時程 |
-| 8 | **`roots/index.html` 是否有 `location.hash` 自動捲動邏輯？** | WP-9 路由驗收 | `ux-designer` 發現的疑慮，grep/靜態讀碼確認不了，需要人工在瀏覽器實測 |
+| 8 | ~~`roots/index.html` 是否有 `location.hash` 自動捲動邏輯？~~ **已由 `cycle-designer` 讀完整檔（205行）定案回答（2026-09-14）：沒有，目前不支援**——非同步fetch後才建立section id，無hash/query處理。已升級為build的硬性阻斷前置條件，並給出補丁介面契約（`?lv=`/`?g=` query string + scrollIntoView），見 `docs/cycle/wp9-2-design.md`。 | WP-9 路由驗收 | 保留列於此供追溯；不再是待決事項——這是讀碼就能證偽的客觀問題，不需要真人瀏覽器實測 |
 | 9 | **字根表降階的先備條件門檻怎麼量化？** | WP-9 | 沒有心理計量資料或真人測試前訂不出來，本輪先不做行為攔阻，只加提醒文案，這是刻意留白 |
 | 10 | ~~WP-1「修好舊錯題+15」的跨場次判定補丁，併入哪一輪派工？~~ **已由 `cycle-designer` 裁決回答（2026-09-14，見 `docs/cycle/wp1-2-design.md`）：併入同一輪 WP-1 建置（Phase 1/2/3 一次做完，不拆票），性質屬工程排程判斷，不需另外等楊老師裁示。** | WP-1（設計已定案，待 `cycle-builder` 施工） | 保留列於此供追溯；不再是待決事項 |
-| 11 | **WP-9 訊息文案本身還沒被 `red-team-critic`（主審）看過**，要不要先排這一輪再進 build？ | WP-9 | §9 的必要審查者表已寫明 red-team-critic 是 WP-9 主審，這輪只有 `english-teacher` 真身看過內容適切性 |
+| 11 | ~~WP-9 訊息文案本身還沒被 `red-team-critic`（主審）看過~~ **已完成（2026-09-14）**：`red-team-critic` 主審找到1致命+3嚴重，`cycle-designer` 已收斂處理，見 `docs/cycle/wp9-2-design.md`。 | WP-9 | 保留列於此供追溯；不再是待決事項 |
+| 12 | 🔴 **WP-9 安全網文案：連降階都撐不住時，要不要在候選A（「去找你的英文老師」）之外，加碼校外心理支持資源（候選B：加1980張老師專線／候選C：分層兩者都給）？** | WP-9（擋Phase 4文案真身審查關閉，不擋Phase 1-3先動工） | `cycle-designer` 不自行拍板——這涉及對未成年學生的實際轉介建議，可能有倫理/法律考量，三個候選的優缺點比較見 `docs/cycle/wp9-2-design.md` |
 
 問題 1 現行預設（未獲答覆前）：**無群組層、單一扁平使用者清單**，楊老師是唯一管理者。
 
@@ -677,7 +684,7 @@ WP-7（代理人化）：等 WP-2 開始重複第 2、3 站時再做，那時才
 | **WP-5 AI 家教** | **`english-teacher`（不可省略）**、`learning-scientist` | B、C | **英文內容錯誤是致命的**；且要驗證它沒有自行生成解釋 |
 | WP-6 老師報表 | `assessment-expert`、`red-team-critic` | — | 失真的數字會被老師拿去質問學生 |
 | **WP-8 教學決策** | **全體五位專家** | A、B、E | 這是系統的大腦，每個角度都會被它影響。**2026-09-14 已完成第一輪裁決，見 `docs/cycle/wp8-2-design.md`** |
-| **WP-9 底線偵測** | **`red-team-critic`（主審）**、`english-teacher` | **C（不可省略）** | 這個 WP 就是為了情境 C 存在的。**2026-09-14：`english-teacher` 已審，`red-team-critic` 主審尚未進行** |
+| **WP-9 底線偵測** | **`red-team-critic`（主審）**、`english-teacher` | **C（不可省略）** | 這個 WP 就是為了情境 C 存在的。**2026-09-14：`english-teacher`、`red-team-critic` 皆已審，`cycle-designer` 已收斂，Phase 1-3 可交 cycle-builder，Phase 4文案待楊老師決定§7#12才能關閉** |
 
 ### 🔴 真人測試不可省略
 
