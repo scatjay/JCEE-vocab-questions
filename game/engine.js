@@ -21,6 +21,10 @@ const firebaseConfig = {
 const NS = "jceeVocabGame";
 const LS_KEY = "jceeGame_v1";
 const RECENT_ATTEMPTS_LIMIT = 30;
+// 離線佇列上限：sessionEnd() 寫 RTDB 失敗時，先把整場 session 存進 localStorage 的
+// this.local.pendingSessions，等下次連線成功再補送（見 _queueSession/_flushPendingSessions）。
+// 超過上限才捨棄最舊的一場——這是刻意的邊界取捨（見 sessionEnd 附近註解），不是理想解。
+const MAX_PENDING_SESSIONS = 20;
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -73,6 +77,7 @@ class Engine {
     this.local = loadLocal();
     this.local.xp = this.local.xp || 0;
     this.local.streak = this.local.streak || { current: 0, longest: 0, lastActiveDay: null, todayCount: 0 };
+    this.local.pendingSessions = Array.isArray(this.local.pendingSessions) ? this.local.pendingSessions : [];
     this._hudEl = null;
     onAuthStateChanged(auth, (u) => { this.user = u; this._loadRemoteIfNeeded(); this._renderHud(); });
   }
@@ -85,6 +90,10 @@ class Engine {
 
   async _loadRemoteIfNeeded() {
     if (!this.user) return;
+    // 每次連線/重新登入都是一次補送離線佇列的機會（不只靠下一次 sessionEnd）——
+    // 斷線常態化的使用者可能久久才重新開站，這裡先補送完再讀遠端，讓下面讀到的
+    // progress/wrongItems 是補送後的最新狀態，不會讓 HUD 短暫顯示「進度消失」。
+    await this._flushPendingSessions();
     try {
       const uid = this.user.uid;
       const [progressSnap, wrongSnap, recentSnap] = await Promise.all([
@@ -270,87 +279,153 @@ class Engine {
     const sess = this.session;
     sess.endedAt = Date.now();
     sess.durationSec = Math.round((sess.endedAt - sess.startedAt) / 1000);
-    const sessionId = sess.sessionId;
     this.session = null;
 
     if (!this.user) return; // 未登入：只留在 localStorage，不寫遠端
 
-    const uid = this.user.uid;
+    // 先補送先前失敗累積的舊場次，維持時間順序寫入——KC 精熟判定（evaluateKcEvent）
+    // 是拿「前一筆狀態」逐次疊代算下一筆，跳過順序或讓新場次搶先寫入會讓舊場次的
+    // 精熟計算基準錯亂。
+    await this._flushPendingSessions();
+
     try {
-      const updates = {};
-      updates[`${NS}/sessions/${uid}/${sessionId}`] = {
-        station: sess.station, mode: sess.mode,
-        startedAt: sess.startedAt, endedAt: sess.endedAt,
-        attempted: sess.attempted, correct: sess.correct, durationSec: sess.durationSec,
-      };
-      updates[`${NS}/progress/${uid}/xp`] = this.local.xp;
-      updates[`${NS}/progress/${uid}/level`] = levelFromXp(this.local.xp);
-      updates[`${NS}/progress/${uid}/streak`] = this.local.streak;
+      await this._writeSessionToRemote(sess);
+    } catch (e) {
+      console.warn(
+        "JG sessionEnd 寫入失敗，先存入本機離線佇列，下次連線成功時補送（不擋畫面，不丟棄這場的精熟/錯題進度）",
+        e
+      );
+      this._queueSession(sess);
+    }
+  }
 
-      // ---- Phase 1：progress/{uid}/stations/{stationId} 累計 ----
-      const stationSnap = await get(ref(db, `${NS}/progress/${uid}/stations/${sess.station}`));
-      const prevStation = stationSnap.exists()
-        ? stationSnap.val()
-        : { attempted: 0, correct: 0, lastAt: 0, msPerItem: 0 };
-      const msTotal = sessionMsTotal(sess);
-      const newAttempted = (prevStation.attempted || 0) + sess.attempted;
-      const newCorrect = (prevStation.correct || 0) + sess.correct;
-      const newMsPerItem = newAttempted > 0
-        ? Math.round(((prevStation.msPerItem || 0) * (prevStation.attempted || 0) + msTotal) / newAttempted)
-        : 0;
-      updates[`${NS}/progress/${uid}/stations/${sess.station}`] = {
-        attempted: newAttempted, correct: newCorrect, lastAt: sess.endedAt, msPerItem: newMsPerItem,
-      };
+  /**
+   * 把單一場 session 的 RTDB 寫入邏輯（Phase 1 stations 累計、Phase 2 kc/recentAttempts/
+   * wrongItems.repairHistory）跑一次。失敗會 throw，由呼叫端（sessionEnd/_flushPendingSessions）
+   * 決定要不要排進離線佇列。因為 kcMap/wrongMap/recentAttempts 都是在函式一開頭現撈遠端現值
+   * 再疊代，離線佇列補送時只要照佇列順序依序呼叫這支，就會自然疊代出正確的最終狀態
+   * ——不需要另外對佇列裡的多筆 session 做「合併/去重」，疊代本身就是最新狀態覆蓋舊狀態。
+   */
+  async _writeSessionToRemote(sess) {
+    const uid = this.user.uid;
+    const sessionId = sess.sessionId;
+    const updates = {};
+    updates[`${NS}/sessions/${uid}/${sessionId}`] = {
+      station: sess.station, mode: sess.mode,
+      startedAt: sess.startedAt, endedAt: sess.endedAt,
+      attempted: sess.attempted, correct: sess.correct, durationSec: sess.durationSec,
+    };
+    updates[`${NS}/progress/${uid}/xp`] = this.local.xp;
+    updates[`${NS}/progress/${uid}/level`] = levelFromXp(this.local.xp);
+    updates[`${NS}/progress/${uid}/streak`] = this.local.streak;
 
-      // ---- Phase 2：progress/kc/{kcId}、progress/recentAttempts、wrongItems.repairHistory ----
-      const [kcSnap, recentSnap, wrongSnap] = await Promise.all([
-        get(ref(db, `${NS}/progress/${uid}/kc`)),
-        get(ref(db, `${NS}/progress/${uid}/recentAttempts`)),
-        get(ref(db, `${NS}/wrongItems/${uid}`)),
-      ]);
-      const kcMap = kcSnap.exists() ? kcSnap.val() : {};
-      let recentAttempts = recentSnap.exists() ? recentSnap.val() : [];
-      if (!Array.isArray(recentAttempts)) recentAttempts = Object.values(recentAttempts || {});
-      const wrongMap = wrongSnap.exists() ? wrongSnap.val() : {};
+    // ---- Phase 1：progress/{uid}/stations/{stationId} 累計 ----
+    const stationSnap = await get(ref(db, `${NS}/progress/${uid}/stations/${sess.station}`));
+    const prevStation = stationSnap.exists()
+      ? stationSnap.val()
+      : { attempted: 0, correct: 0, lastAt: 0, msPerItem: 0 };
+    const msTotal = sessionMsTotal(sess);
+    const newAttempted = (prevStation.attempted || 0) + sess.attempted;
+    const newCorrect = (prevStation.correct || 0) + sess.correct;
+    const newMsPerItem = newAttempted > 0
+      ? Math.round(((prevStation.msPerItem || 0) * (prevStation.attempted || 0) + msTotal) / newAttempted)
+      : 0;
+    updates[`${NS}/progress/${uid}/stations/${sess.station}`] = {
+      attempted: newAttempted, correct: newCorrect, lastAt: sess.endedAt, msPerItem: newMsPerItem,
+    };
 
-      const touchedKc = new Set();
-      for (const it of sess.items) {
-        const kcKey = pathSafeKey(it.kcId);
-        touchedKc.add(kcKey);
-        kcMap[kcKey] = evaluateKcEvent(kcMap[kcKey] || null, {
-          at: it.at, correct: it.correct, sessionId, station: sess.station, itemId: it.qid,
-        });
+    // ---- Phase 2：progress/kc/{kcId}、progress/recentAttempts、wrongItems.repairHistory ----
+    const [kcSnap, recentSnap, wrongSnap] = await Promise.all([
+      get(ref(db, `${NS}/progress/${uid}/kc`)),
+      get(ref(db, `${NS}/progress/${uid}/recentAttempts`)),
+      get(ref(db, `${NS}/wrongItems/${uid}`)),
+    ]);
+    const kcMap = kcSnap.exists() ? kcSnap.val() : {};
+    let recentAttempts = recentSnap.exists() ? recentSnap.val() : [];
+    if (!Array.isArray(recentAttempts)) recentAttempts = Object.values(recentAttempts || {});
+    const wrongMap = wrongSnap.exists() ? wrongSnap.val() : {};
 
-        recentAttempts.push({ at: it.at, station: sess.station, kcId: it.kcId, correct: it.correct, sessionId });
+    const touchedKc = new Set();
+    for (const it of sess.items) {
+      const kcKey = pathSafeKey(it.kcId);
+      touchedKc.add(kcKey);
+      kcMap[kcKey] = evaluateKcEvent(kcMap[kcKey] || null, {
+        at: it.at, correct: it.correct, sessionId, station: sess.station, itemId: it.qid,
+      });
 
-        const itemKey = pathSafeKey(it.qid);
-        const existing = wrongMap[itemKey] || {};
-        if (!it.correct) {
-          const missCount = (existing.missCount || 0) + 1;
-          updates[`${NS}/wrongItems/${uid}/${itemKey}/station`] = sess.station;
-          updates[`${NS}/wrongItems/${uid}/${itemKey}/qid`] = it.qid;
-          updates[`${NS}/wrongItems/${uid}/${itemKey}/category`] = it.category || "";
-          updates[`${NS}/wrongItems/${uid}/${itemKey}/deepLink`] = it.deepLink || "";
-          updates[`${NS}/wrongItems/${uid}/${itemKey}/missCount`] = missCount;
-          updates[`${NS}/wrongItems/${uid}/${itemKey}/lastMissAt`] = it.at;
-          wrongMap[itemKey] = { ...existing, missCount, lastMissAt: it.at };
-        } else if (it.isRepairEvent) {
-          const history = Array.isArray(existing.repairHistory) ? existing.repairHistory.slice() : [];
-          history.push({ repairedAt: it.at, sessionId });
-          updates[`${NS}/wrongItems/${uid}/${itemKey}/repairHistory`] = history;
-          updates[`${NS}/wrongItems/${uid}/${itemKey}/repairedAt`] = it.at;
-          wrongMap[itemKey] = { ...existing, repairHistory: history, repairedAt: it.at };
-        }
+      recentAttempts.push({ at: it.at, station: sess.station, kcId: it.kcId, correct: it.correct, sessionId });
+
+      const itemKey = pathSafeKey(it.qid);
+      const existing = wrongMap[itemKey] || {};
+      if (!it.correct) {
+        const missCount = (existing.missCount || 0) + 1;
+        updates[`${NS}/wrongItems/${uid}/${itemKey}/station`] = sess.station;
+        updates[`${NS}/wrongItems/${uid}/${itemKey}/qid`] = it.qid;
+        updates[`${NS}/wrongItems/${uid}/${itemKey}/category`] = it.category || "";
+        updates[`${NS}/wrongItems/${uid}/${itemKey}/deepLink`] = it.deepLink || "";
+        updates[`${NS}/wrongItems/${uid}/${itemKey}/missCount`] = missCount;
+        updates[`${NS}/wrongItems/${uid}/${itemKey}/lastMissAt`] = it.at;
+        wrongMap[itemKey] = { ...existing, missCount, lastMissAt: it.at };
+      } else if (it.isRepairEvent) {
+        const history = Array.isArray(existing.repairHistory) ? existing.repairHistory.slice() : [];
+        history.push({ repairedAt: it.at, sessionId });
+        updates[`${NS}/wrongItems/${uid}/${itemKey}/repairHistory`] = history;
+        updates[`${NS}/wrongItems/${uid}/${itemKey}/repairedAt`] = it.at;
+        wrongMap[itemKey] = { ...existing, repairHistory: history, repairedAt: it.at };
       }
+    }
 
-      while (recentAttempts.length > RECENT_ATTEMPTS_LIMIT) recentAttempts.shift();
-      updates[`${NS}/progress/${uid}/recentAttempts`] = recentAttempts;
-      for (const kcKey of touchedKc) {
-        updates[`${NS}/progress/${uid}/kc/${kcKey}`] = kcMap[kcKey];
+    while (recentAttempts.length > RECENT_ATTEMPTS_LIMIT) recentAttempts.shift();
+    updates[`${NS}/progress/${uid}/recentAttempts`] = recentAttempts;
+    for (const kcKey of touchedKc) {
+      updates[`${NS}/progress/${uid}/kc/${kcKey}`] = kcMap[kcKey];
+    }
+
+    await update(ref(db), updates);
+  }
+
+  /**
+   * 把一場寫入失敗的 session 存進本機離線佇列（this.local.pendingSessions），
+   * 下次連線成功時（_flushPendingSessions）優先補送。同一 sessionId 已在佇列中時直接覆蓋
+   * （理論上 sessionEnd 每場只呼叫一次，這裡是保險）。超過 MAX_PENDING_SESSIONS 時捨棄
+   * 最舊的一場並 console.warn——這是長時間離線的邊界取捨，不是本次修復要解決的目標
+   * （目標是「一般斷線/訊號不穩」不遺失，不是「無限期離線也保證不遺失」）。
+   */
+  _queueSession(sess) {
+    const pending = Array.isArray(this.local.pendingSessions) ? this.local.pendingSessions : [];
+    const idx = pending.findIndex((p) => p.sessionId === sess.sessionId);
+    if (idx >= 0) pending[idx] = sess; else pending.push(sess);
+    while (pending.length > MAX_PENDING_SESSIONS) {
+      const dropped = pending.shift();
+      console.warn(
+        `JG 離線佇列超過上限(${MAX_PENDING_SESSIONS})，捨棄最舊的一場待補送 session（sessionId=${dropped.sessionId}）`
+      );
+    }
+    this.local.pendingSessions = pending;
+    saveLocal(this.local);
+  }
+
+  /**
+   * 依佇列順序（舊到新）依序嘗試把待補送的 session 補寫回 RTDB。任何一筆失敗就停止
+   * （保留它與它之後尚未補送的，等下次再試），已成功補送的每寫完一筆就立刻從佇列移除並
+   * 存檔——避免「補送到一半又斷線」導致同一筆被重複補送兩次（RTDB 的 update 本身是
+   * 冪等覆蓋沒錯，但重複補送等於白白多打兩次遠端請求，且失敗時的錯誤訊息會誤導）。
+   */
+  async _flushPendingSessions() {
+    if (!this.user) return;
+    const pending = Array.isArray(this.local.pendingSessions) ? this.local.pendingSessions : [];
+    while (pending.length) {
+      const sess = pending[0];
+      try {
+        await this._writeSessionToRemote(sess);
+        pending.shift();
+        this.local.pendingSessions = pending;
+        saveLocal(this.local);
+      } catch (e) {
+        console.warn("JG 離線佇列補送失敗，暫緩，下次連線再試（進度仍留在本機佇列，未遺失）", e);
+        break;
       }
-
-      await update(ref(db), updates);
-    } catch (e) { console.warn("JG sessionEnd 寫入失敗（不擋畫面）", e); }
+    }
   }
 
   _injectHudOnce() {
