@@ -445,6 +445,23 @@ const { floorState, action } = evaluateFloorState(cachedFloorState, JG.getRecent
     抓到的字串必須含有 `?g=` 或等效查詢參數拼接；目前（2026-09-14）抓到的是純字面 `'roots/index.html'`，
     判定**未通過**——這是已知待補的建置缺口，記在此處供下一輪 `cycle-builder` 對照修復，不阻擋 v3
     文案本身上線（roots 頁面仍可正常開啟，只是少了預選層，不是空白/壞掉的連結）。
+    **狀態更新（2026-09-14，cycle-builder 已補，見 commit `593668c`）**：`showFloorHit()` 內
+    `rootsLink.href` 已改為 `'roots/index.html?g=' + encodeURIComponent(DATA[cur].k)`；`cur` 是
+    quiz 模式當下正在測驗的 `DATA` 索引（`ask()`／`buildPool()` 都固定取 `DATA[cur].qs`，題型設計
+    本來就是單一字族內出題、沒有跨字族混題），所以「這次觸底最相關的字族」等於 `DATA[cur].k`，
+    不需要另外追蹤「最近一題屬於哪個字族」這層資訊。`grep -n "rootsLink.href" wordwheel.html` 現在
+    抓到的字串含 `?g=`，機械驗收**已通過**。
+    **但本輪讀碼另外發現一個本文件原本假設有誤的地方，記錄於此供下一輪判斷**：`roots/roots_data.json`
+    目前 15 個分組的 `key`（`tain / ten`、`pon / pos`、`spond / spons`…都是字根 root morphemes）
+    與 `wordwheel.html` 的 12 個 `DATA[].k`（`re-`、`-tion / -sion`、`con- / com-`…都是字首/字尾，
+    僅 `fac / fect / fic` 一個是字根，且不在 roots_data.json 現有 15 組之列）**完全沒有交集**——
+    本文件發現 3 那句「`d.k` 直接就是 roots 分組的候選 `g` 值」這個假設在目前的資料內容下不成立。
+    實際效果：`roots/index.html` 收到不存在的 `g` 值時，`DATA.groups.findIndex(...)` 回傳 `-1`，
+    `if (gi>=0)` 判斷為否，不捲動、不報錯，頁面正常顯示完整清單——符合設計文件「寧可不篩選也不要
+    篩錯」的既有原則，所以**機械驗收標準 12（`?g=` 有帶）本身仍算通過**，但「自動捲到對應字族」
+    這個體驗效果在目前的資料下實際上不會發生（因為兩份資料談的是不同的構詞單位）。這是內容/資料
+    層的落差，不是本次程式碼改動的錯誤，留給主線判斷是否要擴充 `roots_data.json`、或改變
+    wordwheel 傳遞的 key 邏輯來讓兩邊對得上。
 
 ---
 
