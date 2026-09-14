@@ -26,6 +26,7 @@ export function evaluateKcEvent(prevKcRecord, event) {
     lastTestedAt: null,
     lastTestedSessionId: null,
     masteredAt: null,
+    demotedAt: null,
     crossStationVerified: false,
     _stationsInStreak: [],
   };
@@ -47,23 +48,34 @@ export function evaluateKcEvent(prevKcRecord, event) {
 
   let consecutiveSpacedCorrect = prev.consecutiveSpacedCorrect || 0;
   let stationsInStreak = prev._stationsInStreak ? [...prev._stationsInStreak] : [];
+  const wasAtMasteryBefore = consecutiveSpacedCorrect >= KC_MASTERY_STREAK;
 
-  if (!correct) {
-    // 獨立事件但答錯，或非獨立事件時答錯 → 歸零（WP-8 政策8字面規則）
-    consecutiveSpacedCorrect = 0;
-    stationsInStreak = [];
-  } else if (isIndependent) {
-    consecutiveSpacedCorrect += 1;
-    stationsInStreak.push(station);
+  // 2026-09-14 v2（mutator突變提案方案A，見docs/cycle/MUTATIONS.md #1）：只有獨立事件才是
+  // 證據，答對+1(上限3)、答錯-1(下限0)，不整組歸零；非獨立事件（同session或未滿7天）
+  // 不論答對答錯都不影響計數器。
+  if (isIndependent) {
+    if (correct) {
+      consecutiveSpacedCorrect = Math.min(KC_MASTERY_STREAK, consecutiveSpacedCorrect + 1);
+      stationsInStreak.push(station);
+      while (stationsInStreak.length > KC_MASTERY_STREAK) stationsInStreak.shift();
+    } else {
+      consecutiveSpacedCorrect = Math.max(0, consecutiveSpacedCorrect - 1);
+    }
   }
-  // else：非獨立事件且答對 → 不變（同一 session 內同一 KC 被答第二次不算獨立事件）
 
   let masteredAt = prev.masteredAt ?? null;
+  let demotedAt = prev.demotedAt ?? null;
   let crossStationVerified = prev.crossStationVerified || false;
-  if (consecutiveSpacedCorrect >= KC_MASTERY_STREAK && masteredAt == null) {
+  if (!wasAtMasteryBefore && consecutiveSpacedCorrect >= KC_MASTERY_STREAK) {
+    // 由2升到3：達成/重新達成精熟門檻
     masteredAt = at;
+    demotedAt = null;
     const last3 = stationsInStreak.slice(-KC_MASTERY_STREAK);
     crossStationVerified = new Set(last3).size >= 2;
+  } else if (wasAtMasteryBefore && consecutiveSpacedCorrect < KC_MASTERY_STREAK) {
+    // 由3降到2：精熟被撤銷（已達成精熟門檻的KC，其後第一次獨立事件答錯）。
+    // masteredAt 保留原值不清空——供老師報表/AI家教區分「從未精熟」與「曾精熟現退步」。
+    demotedAt = at;
   }
 
   return {
@@ -74,9 +86,10 @@ export function evaluateKcEvent(prevKcRecord, event) {
     lastTestedAt: at,
     lastTestedSessionId: sessionId,
     masteredAt,
+    demotedAt,
     crossStationVerified,
     // 🔴 內部欄位，不在 wp1-2-design.md 介面契約 C 列出的 schema 內：純函式重新評估下一次事件時
-    // 需要知道「這一輪連續獨立正確」各自發生在哪些站，才能算 crossStationVerified；
+    // 需要知道「最近幾次獨立答對事件」各自發生在哪些站，才能算 crossStationVerified；
     // 若不想讓這個欄位進 RTDB，呼叫端可以在寫入前自行剔除，見 engine.js 的取捨說明。
     _stationsInStreak: stationsInStreak,
   };
