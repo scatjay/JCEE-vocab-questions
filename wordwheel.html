@@ -244,7 +244,10 @@ function showFloorHit(action){
   restartBtn.onclick=()=>{ setMode('quiz'); };
   optsEl.appendChild(restartBtn);
   const rootsLink=document.createElement('a');
-  rootsLink.href='roots/index.html';
+  // 觸底當下考的一律是 DATA[cur]（quiz 模式的題目池固定取自 DATA[cur].qs，見 ask()），
+  // 所以「這次觸底最相關的字族」就是 DATA[cur].k，不需要另外追蹤「最近一題屬於哪個字族」
+  // ——目前題型設計本來就是單一字族內出題，沒有跨字族混題的情境，取 cur 即可代表整場。
+  rootsLink.href='roots/index.html?g=' + encodeURIComponent(DATA[cur].k);
   rootsLink.textContent='想先弄懂字根，可以看字根表（這是理解工具，不是必修進度，不勉強）';
   rootsLink.style.cssText='display:block;margin-top:.8rem;color:var(--teal)';
   optsEl.appendChild(rootsLink);
