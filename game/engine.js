@@ -87,9 +87,10 @@ class Engine {
     if (!this.user) return;
     try {
       const uid = this.user.uid;
-      const [progressSnap, wrongSnap] = await Promise.all([
+      const [progressSnap, wrongSnap, recentSnap] = await Promise.all([
         get(ref(db, `${NS}/progress/${uid}`)),
         get(ref(db, `${NS}/wrongItems/${uid}`)),
+        get(ref(db, `${NS}/progress/${uid}/recentAttempts`)),
       ]);
       if (progressSnap.exists()) {
         const remote = progressSnap.val();
@@ -101,9 +102,56 @@ class Engine {
       // 換裝置/清快取後，wrongItems 一律以遠端現值為準——不然「這題修好了嗎」的判定會失真
       // （assessment-expert 審查第4/7條；驗收標準13）。
       this.local.wrong = wrongSnap.exists() ? wrongSnap.val() : (this.local.wrong || {});
+      // WP-9 介面契約 B：JG.getRecentWindow(n) 要合併的「已持久化」那一半，跟 wrongItems 一樣
+      // 換裝置/清快取後以遠端現值為準。
+      let recentAttempts = recentSnap.exists() ? recentSnap.val() : [];
+      if (!Array.isArray(recentAttempts)) recentAttempts = Object.values(recentAttempts || {});
+      this.local.recentAttempts = recentAttempts;
       saveLocal(this.local);
     } catch (e) { /* 讀不到就先用本機值，不擋畫面 */ }
     this._renderHud();
+  }
+
+  /**
+   * WP-9 介面契約 B：回傳最近 n 筆作答，合併「本場尚未 flush 的 session.items」與
+   * 「上次 sessionEnd 已寫入 RTDB 的 progress/recentAttempts 快取」，依時間新到舊排序後取前 n 筆
+   * （回傳順序依 at 升冪：舊到新，供 evaluateFloorState 直接使用）。
+   * 未登入時（this.user===null）只用 this.session.items，跟既有「未登入靜默降級成純
+   * localStorage」的整體架構一致。
+   */
+  getRecentWindow(n = 20) {
+    const persisted = Array.isArray(this.local.recentAttempts) ? this.local.recentAttempts : [];
+    const inSession = this.session
+      ? this.session.items.map((it) => ({
+          at: it.at, station: this.station, kcId: it.kcId, correct: it.correct, sessionId: this.session.sessionId,
+        }))
+      : [];
+    const merged = this.user ? [...persisted, ...inSession] : [...inSession];
+    merged.sort((a, b) => a.at - b.at);
+    return merged.slice(-n);
+  }
+
+  /**
+   * WP-9 介面契約 D：讀取現有 progress/{uid}/floorState（不存在時回傳 null，呼叫端自行
+   * 套用 floor-logic.js 的 emptyFloorState()）。未登入時沒有遠端可讀，回傳 null。
+   */
+  async getFloorState() {
+    if (!this.user) return null;
+    try {
+      const snap = await get(ref(db, `${NS}/progress/${this.user.uid}/floorState`));
+      return snap.exists() ? snap.val() : null;
+    } catch (e) {
+      console.warn("JG.getFloorState 讀取失敗（不擋畫面）", e);
+      return null;
+    }
+  }
+
+  /** WP-9 介面契約 A：把 evaluateFloorState() 算出的新 floorState 寫回 progress/{uid}/floorState。 */
+  setFloorState(floorState) {
+    if (!this.user) return;
+    update(ref(db, `${NS}/progress/${this.user.uid}`), { floorState }).catch((e) => {
+      console.warn("JG.setFloorState 寫入失敗（不擋畫面）", e);
+    });
   }
 
   sessionStart({ mode = "free" } = {}) {
