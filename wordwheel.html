@@ -240,8 +240,24 @@ function showFloorHit(action){
   optsEl.innerHTML='';
   const restartBtn=document.createElement('button');
   restartBtn.className='next show';
-  restartBtn.textContent='回到單字輪重新開始（段考範圍）';
-  restartBtn.onclick=()=>{ setMode('quiz'); };
+  // 2026-09-14 bug fix（student-tester情境C發現）：原文案「回到單字輪重新開始（段考範圍）」承諾降階，
+  // 但 onclick 只有 setMode('quiz')，完全沒有換字族（cur 不變）——學生會被原地丟回剛剛讓他觸底的
+  // 同一批題目重考，形成「按鈕說降階、實際上原地鬼打牆」的迴圈。
+  // 這是「最小可行修正」不是「真正的降階到段考範圍」：DATA 裡沒有跨字族的難度分級（每個字族內部混雜
+  // L1-L3／U9-U12／日期／第X級，字族彼此之間難度沒有排序資料），資料層撐不起「換到一個更簡單的字族」
+  // 這個語意，所以改成「換到另一個字族」（打散原本的同批題目、避免無限鬼打牆迴圈），同時打開「只做
+  // 段考範圍的字」篩選（排除大考中心補充字），讓文案裡「段考範圍」四個字至少對應到程式碼真的會做的事。
+  // 殘留限制：換到的下一個字族並不保證比原字族簡單，只保證不是同一批題目——見
+  // docs/cycle/wp9-2-design.md 本次追加的「已知限制」小節。
+  restartBtn.textContent='換一組單字重新開始（只考段考範圍）';
+  restartBtn.onclick=()=>{
+    const others = DATA.map((_,i)=>i).filter(i=>i!==cur);
+    if (others.length) cur = others[Math.floor(Math.random()*others.length)];
+    sel = -1;
+    const onlyExamBox = document.getElementById('onlyExam');
+    if (onlyExamBox) onlyExamBox.checked = true;
+    setMode('quiz');
+  };
   optsEl.appendChild(restartBtn);
   const rootsLink=document.createElement('a');
   // 觸底當下考的一律是 DATA[cur]（quiz 模式的題目池固定取自 DATA[cur].qs，見 ask()），
