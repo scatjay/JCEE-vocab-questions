@@ -735,7 +735,7 @@ WP-7（代理人化）：等 WP-2 開始重複第 2、3 站時再做，那時才
 | **WP-5 AI 家教** | **`english-teacher`（不可省略）**、`learning-scientist` | B、C | **英文內容錯誤是致命的**；且要驗證它沒有自行生成解釋 |
 | WP-6 老師報表 | `assessment-expert`、`red-team-critic` | — | 失真的數字會被老師拿去質問學生 |
 | **WP-8 教學決策** | **全體五位專家** | A、B、E | 這是系統的大腦，每個角度都會被它影響。**2026-09-14 已完成第一輪裁決，見 `docs/cycle/wp8-2-design.md`** |
-| **WP-9 底線偵測** | **`red-team-critic`（主審）**、`english-teacher` | **C（不可省略）** | 這個 WP 就是為了情境 C 存在的。**2026-09-14：`english-teacher`、`red-team-critic` 皆已審，`cycle-designer` 已收斂，Phase 1-3 可交 cycle-builder，Phase 4文案待楊老師決定§7#12才能關閉** |
+| **WP-9 底線偵測** | **`red-team-critic`（主審）**、`english-teacher` | **C（不可省略）** | 這個 WP 就是為了情境 C 存在的。**2026-09-14：Phase 1-3 已建置（含驗收標準12的roots `?g=`參數）。§7#12（要不要加碼校外心理支持資源）楊老師已決定維持候選A，不再是待決事項——這一項不再卡Phase 4。Phase 4候選A文案經`english-teacher`（v1→v2）、`red-team-critic`（v2→v3）兩輪真身審查修訂為v3，但v3三句合併後的完整版尚未有人做過一次端到端覆核，驗收標準3(b)因此仍未關閉，待下一輪`red-team-critic`快速確認（風險低於前兩輪）**|
 
 ### 🔴 真人測試不可省略
 
