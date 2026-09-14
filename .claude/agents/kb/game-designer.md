@@ -89,3 +89,142 @@
 ## 2026-09-14
 
 2026-09-14（PLAYTEST #1 student-tester身分D回饋後修正）本專案的實測：鎖定每日3題來源（不再自由選、改系統派SRS到期/wrongItems）這類「堵挑軟柿子」機制，若只推演「刷哪個KC」不推演「派到的題目難度」，會在時間破碎身分的通勤黃金窗口製造「開場就是硬骨頭」的問題——到期/錯題結構性比新題難，這點在紙上推演時完全沒被三個鑽法點到，是student-tester實際走查才抓到的。⇒ 一般抽象原則（跨專案可帶走）：任何「鎖定派發來源」機制，除了問「這樣能不能防堵挑軟柿子」，還必須另外單獨問一次「派到的內容本身難度分布如何、開場第一題是不是結構性最難的」——這是獨立的檢查維度，不會被「防堵鑽法」的推演自動覆蓋到。對應PLAN.md §5「觸底後信心重建」原則（降階後前1-2題該選幾乎穩贏內容）可以直接類比套用到「碎片時間開場」：時間越破碎的使用情境，開場第一題越該是暖身/穩贏題，不是系統認為「最該練」的題。另外：到期佇列的「中期堆積會越滾越大」是可預期的機制交互風險而非揣測——本專案`cards/index.html`已經真實踩過同一個坑並修過（due.concat(fresh)不設上限→改DUE_PER_ROUND設每日上限），任何新機制只要接到同一套SRS到期清單，就要主動檢查是否重踩已知坑，不能假設「這次不一樣」。
+
+## 2026-09-14（第二次：讀《Patterns in Game Design》框架骨架 + 楊老師「目標」研讀筆記）
+
+> 材料來源：`pattern_list_by_chapter.htm`（全書章節索引，讀全文）、`overview.pdf`／`framework.pdf`
+> （作者自己的方法論簡報，讀全文）、楊老師個人研讀筆記5份（`notes_目標.pdf`／`notes_不對稱性.pdf`／
+> `notes_未知目標.pdf`／`notes_避免目標.pdf`／`_notes_共同目標.pdf`，讀取程度＝讀全文，
+> **這是楊老師個人的研讀筆記，不是二手網路資料**）。這輪**沒有**讀個別200多條pattern的
+> 詳細條目（`Alphabetical_Patterns/` 底下），留待下一輪視需要挑讀。
+
+### 整本書的框架骨架（讀取程度：讀全文）
+
+書把200多個具體pattern分到11個章節（原書標號5-15，代表前面1-4章是導論/方法論，這輪不讀）：
+
+| 章 | 章名 | 對應本代理人判準1-6 |
+|---|---|---|
+| 5 | Game Elements | 判準3進度節奏、判準5能力可見（Levels/Lives/SavePoints/HighScoreLists） |
+| 6 | Resource and Resource Management | 判準2獎勵指向的底層機制（Producer-Consumer/Investments/DiminishingReturns） |
+| 7 | Information, Communication, and Presentation | 判準5能力可見（ProgressIndicators/GoalIndicators/StatusIndicators直接對應「怎麼讓學生看到自己變強」） |
+| 8 | Actions and Events | 判準1核心循環（Rewards/Penalties/IllusionaryRewards/NewAbilities） |
+| 9 | Narrative Structures, Predictability, Immersion | 跟本代理人判準關聯弱，本專案非敘事型產品 |
+| 10 | Social Interaction | 領域簡報§3已排除同儕排名，這章多數pattern不適用本專案 |
+| 11 | Goals（具體目標種類） | 判準2/4——目標「是什麼」（Collection/GainCompetence/Survive等） |
+| 12 | Goal Structures（目標怎麼組織/呈現） | **直接對應WP-8「精熟判定該不該是離散目標」**——Predefined Goals/Continuous Goals/Ephemeral Goals/Hierarchy of Goals/**Preventing Goals（直接對應WP-9安全網）** |
+| 13 | Game Sessions | 判準1（3分鐘版本要單獨成立——QuickGames/GamePauses相關） |
+| 14 | Game Mastery and Balancing | 判準3進度節奏（RightLevelofDifficulty直接呼應領域簡報§2「期望難度85%」） |
+| 15 | Meta Games, Replayability, Learning Curves | 判準3長跑節奏（SmoothLearningCurves對應「900天不能通膨到無意義」） |
+
+作者自己的component framework給四大類元件（詳見framework.pdf）：
+- **Holistic**（Game Instance／Game Session／Play Session／Extra-game）：切「一次練習」邊界的
+  詞彙——本專案的game session可類比「一次登入到登出」、play session類比「一次番茄鐘」、
+  extra-game類比「看解析/查字典等不算作答的行為」。可以用這套詞彙精確描述「3分鐘版本」
+  到底縮短的是哪一層。
+- **Boundary**（Rules／Modes of Play／**Goals & subgoals**）：原文明講Goals「幾乎總是巢狀階層
+  或網路（subgoals of subgoals of subgoals）」——直接支持WP-8的KC巢狀結構（字根→搭配→KC群）
+  本來就該設計成巢狀目標，不是扁平列表。
+- **Temporal**（Actions／Events／**Closures**／End Conditions／Evaluation Functions）：
+  **Closures**定義為「可量化且有意義的玩家體驗，通常伴隨game state改變，跟goals綁定，
+  可以深度巢狀（subclosures of subclosures）」——這是本輪最有用的詞彙，見下方「跟今天稍早
+  KB內容的印證」。
+- **Structural**（Interface／Game Elements／Players／Facilitator／Game Time）：跟本代理人判準
+  關聯較弱，多屬ux-designer/cycle-builder範圍。
+
+Pattern關聯語彙（design verification可用）：**Instantiates/Instantiated by**（實例化）、
+**Modulates/Modulated by**（調節）、**Potentially Conflicting with**（可能衝突）——下一輪細讀
+個別pattern、或在PLAYTEST.md寫「鑽法」時，可以直接借用這套語彙（例如：「暖身題」機制
+instantiates「Predictable Consequences」但可能conflict「Right Level of Difficulty」）。
+
+作者明確定位patterns的用途之一是「Problem-Solving」：**用來理解一個設計為什麼有某些想要/
+不想要的特徵，NOT用來判斷這遊戲好不好玩**——提醒自己pattern語言是分析工具不是評分工具，
+跟本代理人判準裡「先推演學生會怎麼鑽」的方法論精神一致（先理解機制會產生什麼效果，
+而非直接下好壞結論）。
+
+### 楊老師的5份「目標」研讀筆記——重要的第一手發現，跟原任務描述的預期不完全一致
+
+這5份筆記**完成度落差很大**，不是5份等重的完整分析：
+- `_notes_共同目標.pdf`（Mutual Goals）：**唯一完整寫完的一份**（定義＋2個範例＋詳細
+  「運用」分析＋兩輪「濃縮重點」摘要表，橫跨6頁）。
+- `notes_目標.pdf`：只完整寫了「不對稱目標」一節；「連續目標」「對稱性目標」兩節只有
+  標題，內文是空的（等待填寫的骨架）。
+- `notes_避免目標.pdf`：「定義／範例／運用」三格式的空白模板（只填了一句定義，範例和
+  運用都沒填）。
+- `notes_未知目標.pdf`：整份完全空白（連標題都沒有）。
+
+⇒ **這個完成度落差本身就是訊號**：楊老師花最多力氣讀懂、整理成自己語言的是**共同目標
+（Mutual Goals）**——但這是多人遊戲/社交互動類的目標模式，跟本專案「單人、不做同儕排名」
+的產品形態關聯性反而最弱（領域簡報§3已排除同儕比較）。真正跟WP-8/WP-9直接相關的
+「連續目標」「避免目標」「未知目標」，反而是楊老師還沒讀完/沒整理完的部分——**這代表
+「目標」這個主題留下最多待完成的研讀軌跡，不是已經沉澱的洞見集合**。我判斷任務描述裡
+「代表這是他特別想深入的面向」這個預設，在共同目標這一份上成立，在其餘四份上不成立——
+這點要誠實回報，不能為了呼應任務描述而過度解讀空白頁。
+
+**共同目標（Mutual Goals）筆記的實質內容**（唯一完整的一份，摘要）：
+- 核心區分：共同目標的獎勵/懲罰可以是「個別」或「共享」，交叉出四種組合，各自對
+  「合作程度」有不同效果：個別獎+個別罰→降低合作、驅動劇情、達到延遲互惠；
+  共享獎+共享罰→大幅增加合作（尤其團隊會「全滅」時效果更強）；個別獎+共享罰→
+  增加戲劇張力（競爭當第一個完成者）；共享獎+個別罰→增加合作但取決於獎勵怎麼分配。
+- 另一組區分：「預先決定目標」（Predefined Goals，決定團隊怎麼玩、能增進平衡、獎懲規則
+  完整定義好）vs.「玩家自訂目標」（Player Defined Goals，玩家自己選要跟誰共享目標、
+  能降低特定玩家的難度、獎懲可事後自行分配）；兩者可混合。
+- 這份筆記本質談「多人遊戲裡的團隊誘因結構」，**本專案沒有多人/團隊要素，具體結論
+  （共享獎懲四象限）不能直接套用**，但底層方法論可借用：「獎懲怎麼分配決定行為怎麼
+  被驅動」跨情境成立，跟Deci et al. overjustification effect（今天稍早記錄）是同一個
+  方法論家族——一個從「誰跟誰共享」切，一個從「獎勵是否預期/是否綁定表現」切，
+  互補不衝突，都支持「獎勵結構的精確形狀決定玩家實際去優化什麼」這條總原則。
+
+**其餘四節留下的線索**（未完成，但標題本身指出下一輪該細讀哪些具體pattern，跟WP-8/WP-9直接相關）：
+- **「避免目標」（Preventing Goals）**：楊老師寫下的唯一一句定義是「避免另外一個目標被
+  完成」，並自問「和反面目標(Negative Goals)不同？」——這句自問極有價值：這正是WP-9
+  「底線偵測/安全網」在pattern語言裡的精確定位。WP-9要防止的「學生崩潰放棄」字面上就是
+  一個Preventing Goal（防止某個負面closure發生），但楊老師自己也不確定這跟單純的
+  「反面/負面目標」有沒有實質差異——這是懸而未決的概念問題，直接影響WP-9設計語言該
+  怎麼下（該把「不要放棄」正面表述成一個目標，還是維持它是背景約束/防護網，兩者對UI
+  呈現和學生心理的意義不同）。**下一輪應優先讀`Alphabetical_Patterns/PreventingGoals.htm`全文**。
+- **「連續目標」（Continuous Goals）**：楊老師只寫標題、無內容，但這個pattern本身直接對應
+  WP-8核心問題「精熟判定該不該是離散目標」——第12章Goal Structures同時收錄Continuous Goals
+  和Predefined/Ephemeral/Hierarchy of Goals，代表原書作者本來就把「目標是離散還是連續」
+  當成明確的設計光譜，不是本團隊自己發明的二分法。**這是下一輪最優先要讀的pattern**：
+  需要知道原書怎麼定義「連續目標」，才能判斷WP-8的θ/KC精熟資料，究竟該包裝成離散closure
+  （「這個KC精熟了」一次性事件，像今天稍早PLAYTEST.md設計的精熟地圖全亮動畫）還是連續
+  呈現（θ數值本身連續變化，不特別標記「精熟」瞬間）——這正是WP-8審查文件裡懸而未決的
+  問題，原書可能有現成的利弊分析可以直接借用。
+- **「不對稱目標」（Asymmetric Goals，唯一完整段落）**：定義是「玩家有結構上不同的目標，
+  需要不同策略/動作完成」，範例是Tag（鬼抓人vs.逃跑者）。效果：增加重複可玩性、資訊
+  不對稱可以讓玩家對彼此目標有所隱瞞。本質是多人遊戲概念，單人學習產品沒有「其他玩家」，
+  字面不適用。**我的判斷（非原書結論，待驗證）**：同一個學生面對不同類型KC（高頻詞背誦
+  類vs.文法搭配內化類）時，需要的其實是「結構上不同的達成策略」——背誦類靠重複曝光+
+  間隔複習，搭配類更接近「一次想通就不太會忘」（語意/規則理解而非機械記憶）。這跟本KB
+  已記錄的「一般抽象原則」（高頻詞背誦類適合連續正確+間隔複習、文法規則內化類不適合
+  固定值XP）互相印證——這次是從「不對稱目標需要不同策略」的遊戲設計語彙反推，原KB條目
+  是從題型特性直接推論，兩條路徑收斂到一致結論，算交叉驗證，非重複記錄。
+
+### 跟今天稍早KB內容的互相印證/衝突檢查
+
+- **印證，不衝突**：Deci et al. (1999) overjustification effect（判準2理論根據）跟Mutual Goals
+  筆記（共享/個別獎懲四象限）是完全不同的文獻脈絡（心理學實證研究vs.遊戲設計pattern語言），
+  但收斂到同一個更高階原則：「獎勵/懲罰被綁定的方式（給誰、綁什麼條件、公開或隱藏）
+  決定行為會往哪個方向被優化」。不是巧合式印證，是兩個領域在講同一現象的不同切面，
+  值得記下但不需合併——保留兩條各自出處，方法論結論互相加強即可。
+- **精確化而非推翻**：今天稍早「我的判斷」條目寫「獎勵層完全沒有能力可見的對應物」，
+  這個判斷沒被推翻，但framework.pdf的Closures定義（「可量化且有意義的玩家體驗，跟goals
+  綁定」）給了這個判斷更精確的技術詞彙——之後回報WP-8/WP-9問題時，可以說「目前只有
+  Events沒有Closures」，比「沒有能力可見的東西」更容易被其他代理人（尤其assessment-expert、
+  ux-designer）用同一套語言接話，減少每次重新定義「能力可見」的溝通成本。
+- **交叉驗證，非重複**：streak機制的loss aversion研究（今天稍早記錄，僅摘要未讀原文）
+  跟Continuous Goals（雖楊老師筆記空白，但章節位置透露這是跟Predefined/discrete goals對照
+  的類別）互相呼應：streak結構上更接近「連續目標」（沒有明確終點，只有「維持得多好/多久」），
+  WP-8的KC精熟判定結構上更接近「離散目標」（有明確「達成」瞬間，三次獨立事件間隔七天）。
+  這個結構性差異**可能**可以解釋為什麼streak「剛性斷掉會反噬」而KC精熟「不會因中斷倒退」——
+  連續目標對中斷比離散目標敏感。**這是我的推論，不是原書或研究明講的結論**，下一輪讀到
+  Continuous Goals/Predefined Goals原文若有佐證或反證，這條要回頭修正。
+
+### 下一輪待讀清單（這輪不做，留紀錄避免忘記，優先序已排）
+1. `Alphabetical_Patterns/PreventingGoals.htm`、`ContinuousGoals.htm`、`PredefinedGoals.htm`、
+   `EphemeralGoals.htm`、`HierarchyofGoals.htm`（第12章，直接對應WP-8「離散vs連續」與WP-9
+   「安全網」，且是楊老師筆記留白/自問的部分，優先序最高）。
+2. `ProgressIndicators.htm`、`GoalIndicators.htm`、`StatusIndicators.htm`（第7章，對應判準5
+   「能力可見」/Closures怎麼在介面上呈現，是「精熟地圖」機制的既有pattern語彙）。
+3. `RightLevelofDifficulty.htm`（第14章，對應領域簡報§2的85%期望難度）、
+   `SmoothLearningCurves.htm`（第15章，對應900天不通膨的長跑要求）。
