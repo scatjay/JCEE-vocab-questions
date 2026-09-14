@@ -391,3 +391,7 @@ Hovering Closure（例如不該給它一個進度條或「距離觸底還有X題
 （寫入`kb/_SHARED_language_learning_gamification.md`），不再繼續深挖這本通用遊戲設計書。
 若未來設計「期望難度85%」或「900天不通膨」相關機制時，仍可以回頭讀這兩個pattern，這裡只是
 標記「有意識地擱置」而非遺漏。
+
+## 2026-09-14
+
+共用KB(_SHARED_language_learning_gamification.md)已補入首批具體內容：Duolingo streak/freeze/XP時段boost/league排行榜的具體機制細節、guilt文案('You made Duo sad')與streak abstinence violation effect兩個公開批評案例、Mogavi et al.(2022, L@S)關於gamification misuse的學術論文(僅摘要)。落地判斷：WP-9的無條件寬限優於Duolingo的代幣式Freeze(不要為了像Duolingo而改成消耗品寬限)；WP-8的品質綁定XP優於Duolingo的純量XP，該堅持；不要引入時段延遲雙倍XP這類純訪次工程機制；跟風/從眾行為是排行榜之外、連非正式社交可見性都要推演的鑽法類型。第二家產品比較與論文全文留待下一輪。
