@@ -219,8 +219,9 @@ const mLearn=document.getElementById('mLearn'), mQuiz=document.getElementById('m
 let mode='learn', pool=[], qi=0, right=0, done=0;
 
 // ---- WP-9 底線偵測（介面契約 D）----
-// 楊老師定案的候選 A 文案（docs/cycle/wp9-2-design.md 裁決 1），逐字沿用，不在這裡改寫潤飾。
-const FLOOR_MSG_A = "這個系統目前的題目都超出你現在能穩定練習的範圍。去找你的英文老師，讓他知道你卡在這裡——他會比系統更清楚接下來怎麼幫你。";
+// 候選A文案 v2（docs/cycle/wp9-2-design.md，2026-09-14 english-teacher審查後由cycle-designer
+// 裁決修訂，取代v1），逐字沿用，不在這裡改寫潤飾。
+const FLOOR_MSG_A = "這一段的題目，目前對你來說太難了——這不是你的問題，是這裡的內容本來就是這個難度。下次上課，你可以直接跟英文老師說：『我在這個系統裡一直卡關，想請你幫我看看接下來怎麼繼續。』他會比系統更清楚怎麼幫你。";
 let floorState = emptyFloorState();
 // 頁面載入時讀一次現有值（跟現有 _loadRemoteIfNeeded() 模式一致，不從零開始）；
 // 未登入或讀取失敗時維持 emptyFloorState()，不擋畫面。
