@@ -16,3 +16,7 @@ WP-1施工(2026-09-14)：把可用node直接呼叫的純函式(computeAnswerGain
 ## 2026-09-14
 
 wordwheel.html 的 quiz 模式固定只從 DATA[cur] 出題（cur 是模組層級的當下選定字族索引），所以要判斷『這次觸底最相關的字族』時，直接用 DATA[cur].k 即可，不需要另外追蹤逐題字族——這類單頁面單字族出題的結構，判斷『當下上下文』時先看有沒有現成的頁面級狀態變數（如 cur），比自己另開一個追蹤變數省事。另外：跨頁面傳遞 key 做深連結時，不能只看『兩邊都有讀寫這個參數的程式碼』就假設資料值域一致——這次 roots/index.html 讀 ?g= 沒問題，但 roots_data.json 現有15組 key（字根，如 tain/ten）跟 wordwheel 的 DATA[].k（字首/字尾，如 re-）完全沒有交集，是規格文件裡沒人實際跑過 diff 才漏掉的假設落差。
+
+## 2026-09-14
+
+實測：node ESM 測 engine.js 這類 import https:// firebase SDK 的前端檔，不需要 loader hook——直接讀原檔字串把三行 import 換成本機 stub 模組的 file:// 絕對路徑（Windows 需要 file:///C:/... 三個斜線，裸絕對路徑 C:/... 當 specifier 會 resolve 失敗）寫成暫存副本再 import 即可，比架 --experimental-loader 快很多。假 RTDB 只要一個 path->value 的 flat map + get/update/push 三個函式配合 update() 可切換 throw 就夠模擬離線佇列往返，不需要完整模擬巢狀 JSON 結構。
