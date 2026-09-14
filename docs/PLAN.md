@@ -5,6 +5,7 @@
 > 政策4(到期複習)vs政策6(新舊比例)寫成明確優先序算法、難度公式補 tie-break 與冷啟動切換點、
 > 新增 WP-8 Phase 0 資料層 schema 補丁（`progress/{uid}/kc/{kcId}`、`progress/{uid}/recentAttempts`、`wrongItems.repairHistory`）、
 > WP-9 補上色彩/彈窗/冷卻機制與 floor-hit 對 streak 的處理。裁決全文與未採納意見見 `docs/cycle/wp8-2-design.md`）**｜
+> **2026-09-14 追加**：`mutator` 用 Leveled Commitment Contracts 框架突變提案精熟判定（政策8），`cycle-designer` 裁決採納方案A（答錯扣點代替歸零、精熟可被撤銷），schema 新增 `demotedAt`，驗收標準第7條同步修訂、新增第15、16條，第13條紅線驗收範圍同步擴大。裁決全文見 `docs/cycle/MUTATIONS.md` #1。｜
 > 基準 commit：`f0fb953`
 > 用途：**派工用的工程文件**。之後的 session（含 Sonnet）接手時，先讀這一份，再挑工作包做。
 > 文件裡的行號取自上述 commit，動到原站檔案前請先 grep 確認位置沒有位移。
@@ -430,11 +431,12 @@ progress/{uid}/kc/{kcId}: {
   attempted: number,
   correct: number,
   recentWindow: [{ at: ms, correct: bool, itemId, sessionId, station }],  // 上限 10 筆
-  consecutiveSpacedCorrect: number,   // 只在「獨立事件」規則成立時才遞增，錯一次歸零
+  consecutiveSpacedCorrect: number,   // 0–3；「獨立事件」規則成立時，答對+1(上限3)、答錯-1(下限0)，不整組歸零（2026-09-14 v2：採納mutator突變提案方案A，見 docs/cycle/MUTATIONS.md #1）
   lastTestedAt: ms,
   lastTestedSessionId: string,
-  masteredAt: ms | null,
-  crossStationVerified: bool          // 3 次裡是否至少 1 次來自不同站
+  masteredAt: ms | null,        // consecutiveSpacedCorrect 最近一次由2升到3(達成/重新達成精熟門檻)的時間；一旦設定，之後即使被撤銷也不清空，保留「曾經精熟過」的歷史事實
+  demotedAt: ms | null,         // 新增欄位。consecutiveSpacedCorrect 最近一次由3降到2(精熟後首次獨立事件答錯，即精熟被撤銷)的時間；重新達到3時清空為null
+  crossStationVerified: bool    // 最近一次consecutiveSpacedCorrect達到3時，湊滿這3次的獨立答對事件是否分屬≥2個不同站（回溯 recentWindow 判定）
 }
 
 progress/{uid}/recentAttempts: [{ at: ms, station, kcId, correct: bool, sessionId }]
@@ -484,16 +486,14 @@ wrongItems/{uid}/{itemKey}: {
    ```
 7. **交錯**：同一 KC 連續不超過 2 題；且**同一 KC 兩次出現之間至少間隔 3 題不同 KC**
    （初始值，之後依真實資料調整）。
-8. **精熟判定（這同時是「攻克」的操作型定義，全計畫最重要的一段文字，2026-09-14 修訂版）**：
-   > 同一 KC 需通過 **3 次獨立的到期複習事件** 才標記精熟：
-   > - 每次事件必須「距上次對此 KC 的作答 ≥7 天」且「與前一次計入的正確事件不在同一個 `sessionId`」；
-   > - 3 次都必須答對，中間任何一次答錯，`consecutiveSpacedCorrect` 歸零重算——不是三次裡對兩次就算數；
-   > - 若該 KC 在多個站都有對應題目，且這 3 次中至少 1 次發生在與其他次不同的站：
-   >   對外顯示「精熟」（攻克的操作型定義成立），`crossStationVerified:true`；
-   > - 若該 KC 只存在單一站，或雖存在多站但這 3 次都發生在同一站：
-   >   內部照樣記 `masteredAt`（排程照樣拉長到最長間隔），但對外顯示降級為「此站已穩定」，
-   >   並在老師報表/AI家教注記「僅單站驗證，遷移未測」，`crossStationVerified:false`。
-   > - 「攻克」一詞只能在 `crossStationVerified:true` 時使用；`crossStationVerified:false` 一律用「此站已穩定」。
+8. **精熟判定（這同時是「攻克」的操作型定義，全計畫最重要的一段文字，2026-09-14 v2 修訂——採納`mutator`突變提案方案A，裁決見 `docs/cycle/MUTATIONS.md` #1）**：
+   > `consecutiveSpacedCorrect`（範圍 0–3）是唯一驅動精熟狀態的計數器：
+   > - **獨立事件**（定義不變）：距上次對此 KC 的作答 ≥7 天，且與上一次被計入的獨立事件不在同一個 `sessionId`。
+   > - 每次獨立事件發生：**答對 `+1`（上限3，不再往上累加）；答錯 `-1`（下限0，不是整組歸零重算）**——一次失誤退一步，不作廢先前累積的證據。
+   > - `consecutiveSpacedCorrect` 由 2 升到 3 的那一刻＝**達成精熟門檻**：`masteredAt` 設為該次事件時間；`demotedAt` 清空為 `null`；`crossStationVerified` 依湊滿這 3 次的獨立答對事件（回溯 `recentWindow`）判定——這 3 次分屬 ≥2 個不同站則 `true`，對外顯示「精熟」；否則 `false`，對外顯示「此站已穩定」（含該 KC 只存在單一站的情況）。
+   > - `consecutiveSpacedCorrect` 由 3 降到 2 的那一刻（已達成精熟門檻的 KC，其後第一次獨立事件答錯）＝**精熟被撤銷**：`demotedAt` 設為該次事件時間；`masteredAt` **保留原值不清空**（歷史事實：曾經達到過精熟門檻，供老師報表/AI家教顯示「曾精熟後退步」）；對外顯示退回一般練習中的顯示，不得使用「攻克」「精熟」「此站已穩定」任一詞。
+   > - 若之後 `consecutiveSpacedCorrect` 重新由 2 升到 3（重新達成）：`masteredAt` 更新為新的達成時間、`demotedAt` 清空為 `null`、`crossStationVerified` 依新一輪湊滿 3 次的獨立答對事件重新判定——可反覆發生，不限一次。
+   > - 「攻克」一詞只能在 `consecutiveSpacedCorrect===3 且 crossStationVerified:true` 時使用；`consecutiveSpacedCorrect===3 且 crossStationVerified:false` 一律用「此站已穩定」；`consecutiveSpacedCorrect<3`（含剛被撤銷的狀態）一律不使用「攻克」「精熟」「此站已穩定」任一詞。
    > - 🔴 **在 Phase 0 資料層補丁通過驗收前，「攻克」「精熟」兩詞禁止出現在任何使用者可見畫面。**
 9. 🔴 **每一題都要帶得出「為什麼給你這題」的一句話**（`reasonText`，掛在該次作答紀錄上），存進資料，
    **且必須呈現給學生本人**，不只是給老師報表/AI家教看：放在作答**之前**（題幹旁小徽章，預設收合，
@@ -516,8 +516,8 @@ wrongItems/{uid}/{itemKey}: {
 6.（正，政策8機械驗收）造「同一 KC 間隔8天、9天、10天各答對一次、且三次分屬三個不同 session」的假學生：
    驗證第3次事件後 `masteredAt` 被設定；若三次都在同一站，驗證對外顯示為「此站已穩定」；
    若其中一次在不同站（且該 KC 確有跨站對應題），驗證顯示為「精熟」且 `crossStationVerified:true`。
-7.（負，政策8機械驗收）造「到期複習中間有一次答錯」的假學生，驗證 `consecutiveSpacedCorrect` 歸零重算，
-   不會用「3次對2次」湊數判定精熟。
+7.（負，政策8機械驗收，2026-09-14 v2修訂：原「歸零重算」已依mutator突變提案方案A改為「扣點」，見MUTATIONS.md #1）造「四次獨立事件依序為：答對、答對、答錯、答對」的假學生，驗證 `consecutiveSpacedCorrect` 依序變化為 1→2→1→2（第三次答錯是扣1而非歸零到0），第4次事件後仍未達到3、`masteredAt`仍為null、不判定精熟；
+    追加第5次獨立事件答對後 `consecutiveSpacedCorrect=3`，此時才設定 `masteredAt`——驗證「答錯不能整組作廢先前證據，但也不能3次裡對2次就湊數過關」同時成立。
 8.（正，政策6機械驗收）造「到期複習題數本身超過70%配額」的假學生，驗證當日新題仍保底出現 ≥1 題（N≥2）。
 9.（正，政策6機械驗收）造「到期複習不足70%配額」的假學生，驗證缺口由新題補滿，但當日新題總數不超過 ceil(0.5N)。
 10.（正，政策6機械驗收）追蹤一個穩定期（非頭兩週）假學生連續30天出題記錄，統計新/複習題比例落在30/70附近（±10個百分點）。
@@ -525,10 +525,12 @@ wrongItems/{uid}/{itemKey}: {
     **負面**：資料庫中不得出現任何一筆 KC 鍵值直接等於 `parse`／`pos`／`sense`／`infer`／`fake` 字串本身。
 12.（正，schema驗收）抽查 `progress/{uid}/recentAttempts`，驗證筆數上限生效，且用它就能算出
     WP-9 的滾動20題正確率（不必重掃 `sessions` 全表）。
-13.（負，紅線驗收）在 Phase 0 的第5、6、11、12 條通過前，grep 學生端頁面、老師報表模板、AI家教
+13.（負，紅線驗收，2026-09-14 v2擴大範圍）在 Phase 0 的第5、6、7、11、12、15、16 條通過前，grep 學生端頁面、老師報表模板、AI家教
     prompt 模板，搜尋「攻克」「精熟」字樣——**任何出現都判定為未通過驗收，不得上線**。
 14.（正，tie-break機械驗收）造一個 θ 與 d 差距極大的假學生（例如 θ=0.95、d=0.05），使多個候選
     clamp 後的 `p` 同分；驗證排序改用 `p_raw` 作 tie-break，重跑同一輸入10次結果穩定不隨機。
+15.（正+負，政策8機械驗收，新增，2026-09-14 v2：採納mutator突變提案方案A）造「已達成精熟門檻（`consecutiveSpacedCorrect=3`、`masteredAt`已設定）的KC，其後第一次獨立事件答錯」的假學生：驗證 `consecutiveSpacedCorrect` 降為2、`demotedAt` 被設定為該次事件時間、`masteredAt` 保留原值未被清空為null、對外顯示不得出現「攻克」「精熟」「此站已穩定」任一詞、老師報表/AI家教能區分「從未精熟」與「曾精熟現退步」兩種狀態（用`demotedAt`是否有值判斷，不要求特定文案字面）。
+16.（正，政策8機械驗收，新增，2026-09-14 v2）延續上一題假學生，追加連續2次獨立事件皆答對：驗證 `consecutiveSpacedCorrect` 回到3、`demotedAt` 清空為null、`masteredAt` 更新為最新達成時間、`crossStationVerified` 依這輪湊滿3次的獨立答對事件重新判定（不沿用被撤銷前的舊值）。
 
 ---
 
