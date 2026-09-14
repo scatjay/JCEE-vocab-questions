@@ -37,7 +37,7 @@
 | `claim_audit.py` | 掃描指定詞（例：攻克/精熟）有沒有出現、資料撐不撐得住 | `assessment-expert`（規劃中） | 💡 proposed | 尚未建置 |
 | `xp_sim.py` | 模擬計分規則在不同學生策略下的產出，抓鑽漏洞空間 | `game-designer`（規劃中） | 💡 proposed | 尚未建置 |
 | `interleave_check.py` | 判定一串KC序列是否符合交錯規則 | `learning-scientist`（規劃中） | 💡 proposed | 尚未建置 |
-| `floor_sim.py` | 模擬假學生跑WP-9底線偵測，量誤觸發率 | `red-team-critic`（規劃中） | 💡 proposed | 尚未建置 |
+| `floor_sim.py` | 模擬假學生跑WP-9底線偵測，量誤觸發率 | `cycle-evaluator`（規劃中，2026-09-14由red-team-critic提案改由cycle-designer裁決指派給cycle-evaluator——見`docs/cycle/wp9-2-design.md`「沒有採納」小節：寫模擬腳本屬驗收職權，不是紅隊審查職權） | 💡 proposed | 尚未建置；WP-9 Phase 3施工完成後，`cycle-evaluator`可直接照`evaluateFloorState`純函式介面契約寫這支或等效單元測試 |
 
 ## 工具生態治理（固定循環，不是一次性建置）
 

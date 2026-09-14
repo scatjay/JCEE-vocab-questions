@@ -101,3 +101,7 @@ Commitment框架）品質判斷：框架選用準確、後設分析（consecutiv
 新欄位」的落差，下次審mutator或cycle-designer提案時應該固定檢查一遍。另外首次確認：mutator
 工具箱的"上次用過"欄位它自己因為沒有Edit工具而留空，我補上了——這是我跨代理人視角職權範圍
 內該做、且mutator在完成報告裡主動提到的缺口，往後mutator每次用完框架大概率都要靠我來補這欄。
+
+## 2026-09-14
+
+第四輪：確認上一輪判斷(2026-09-14第三輪"framework選對、方案A有兩處遺漏"、"mutator不排這輪")都對，且抓到一個新的系統性教訓——mutator/cycle-designer的裁決循環只檢查"政策文字"層，完全沒檢查"已經施工完成、依舊政策寫死的程式碼"這個死角：cycle-builder在mutator提案之前就已經照舊政策8(答錯歸零/masteredAt不可撤銷)把game/kc-logic.js建置完成，裁決採納方案A之後，沒有任何一次黑板列(含cycle-designer自己的residual_risk欄)點名"WP-1已建置程式碼需要回頭同步"，這個落差是主線事後手動發現才補的(commit 50364a2)。這不是任何一隻代理人失職，是流程本身有洞——以後看到"WP-8/WP-1這類已有下游程式碼的政策修訂"時，我健檢要多問一句"這個決策生效前，有沒有已經施工完成但依照舊版政策寫的程式碼"，已經把這條寫進mutator自己的工具箱心得，讓它下次提案時主動grep對應的game/*.js。另外：WP-9設計(wp9-2-design.md)已把floor_sim.py的owner從red-team-critic改判給cycle-evaluator(裁決明文寫在"沒有採納"小節)，但TOOLS.md舊版仍寫著red-team-critic——這種"裁決文件內容已經改判、但共用清單沒跟著同步"的落差，以後健檢工具生態這項要記得跟裁決文件本身對一次，不能只看TOOLS.md表面文字。這輪Contract Net批次刻意只公告2個(cycle-builder做WP-9 Phase1-3、english-teacher做WP-9 Phase4文案審查)，即使共用池顯示還有餘額，因為主線特別提醒臨時放寬額度不能當常態——這個"即使額度夠也要保守"的判斷這次是主線直接指示，不是我自己推導出來的，下次沒有這種提醒時我還是要用batch cap=min(3-5,剩餘額度)的原始公式，不要把這次的保守值當成新常態。
