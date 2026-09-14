@@ -534,13 +534,18 @@ wrongItems/{uid}/{itemKey}: {
 
 ---
 
-### ⬜ WP-9 底線偵測與誠實路由（M 型化） — 2026-09-14 red-team-critic主審＋cycle-designer收斂完成
+### 🟨 WP-9 底線偵測與誠實路由（M 型化） — 2026-09-14 Phase 1-3 已建置，Phase 4文案審查進行中
 
 > 見 `docs/cycle/wp9-2-design.md`。`red-team-critic` 主審找到1致命+3嚴重問題，其中2項已被
 > WP-1施工意外解決（`recentAttempts`／`forceStreakCredit`已建置）；roots深連結缺口升級為
 > build的硬性阻斷前置條件（已給補丁介面契約）；安全網「指向外部資源」文案定案候選A先進build，
-> **候選B/C（要不要加碼校外心理支持資源）需要楊老師決定，見§7**。Phase 1-3可交cycle-builder
-> 施工，Phase 4（文案真身審查）待楊老師回答後才能關閉。
+> **候選B/C（要不要加碼校外心理支持資源）需要楊老師決定，見§7**。
+> **2026-09-14 追加**：Phase 1-3 已由 `cycle-builder` 建置完成（`game/floor-logic.js`、
+> `JG.getRecentWindow`/`getFloorState`/`setFloorState`、`wordwheel.html`/`roots/index.html`接線）；
+> 驗收標準1/4/5/6/7/8/9/11本輪已用node直接驗證通過，標準2/10需瀏覽器環境、標準3(b)需真人
+> 確認才能關閉。候選A文案同一時間經 `english-teacher` Phase 4真身審查判定v1不通過，
+> `cycle-designer` 部分採納裁決為v2（已同步替換進UI），v2尚未跑過第二輪真身審查，
+> 驗收標準3(b)仍未關閉。
 **前置**：WP-8
 **目標**：系統發現自己幫不上這個學生時，**誠實說出來並指路，而不是繼續餵他失敗**。
 
