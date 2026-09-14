@@ -353,7 +353,8 @@ const { floorState, action } = evaluateFloorState(cachedFloorState, JG.getRecent
    `evaluateFloorState`（或端到端跑 `JG.answer`+偵測呼叫），在第 8 題（連續 8 錯規則）或第 20 題內
    （≤30% 規則）得到 `action==='trigger_full'`。
 2.（正）觸發後路由指向站內實際存在的頁面。怎麼驗：`curl` `wordwheel.html` 與
-   `roots/index.html?lv=1,2` 均回傳 200。
+   `roots/index.html?lv=1,2` 均回傳 200。**已驗證通過（2026-09-14，主線用本機
+   `python -m http.server` 起一次性伺服器實測，兩者皆 200，已關閉伺服器）。**
 3.（負，本文件新增，取代原本只靠關鍵字黑名單的版本）觸發訊息（候選 A 或楊老師選定版本）
    同時通過**兩層**檢查才算過：(a) 機械關鍵字黑名單（不含「加油」「再試一次」「不要放棄」）；
    (b) `red-team-critic` 或 `english-teacher` 對逐字文案的真身審查通過（不是模擬、不是黑名單）。
